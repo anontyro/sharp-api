@@ -13,6 +13,7 @@ namespace My_Api.Services
     public interface IUserService
     {
         UserOutputModel Authenticate(string email, string password);
+        User DecodeTokenUser(string jwtToken);
     }
 
 
@@ -71,6 +72,26 @@ namespace My_Api.Services
             return output;
         }
 
+        public User DecodeTokenUser(string jwtToken)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var securityToken = tokenHandler.ReadToken(jwtToken) as JwtSecurityToken;
+
+            var userId = securityToken.Claims.FirstOrDefault(claim => claim.Type == "unique_name").Value;
+
+            if(userId == null)
+            {
+                return null;
+            }
+
+            var user = _context.User
+                .Where(x => x.Id == int.Parse(userId))
+                .SingleOrDefault();
+
+
+            user.Password = null;
+            return user;
+        }
 
     }
 }

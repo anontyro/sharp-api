@@ -30,8 +30,17 @@ namespace My_Api.Controllers
             _configuration = configuration;
             _userService = userService;
         }
-
         [HttpGet]
+        public IActionResult GetUserDetails([FromHeader] string authorization)
+        {
+            var jwtToken = authorization.Split(" ")[1];
+
+            var user = _userService.DecodeTokenUser(jwtToken);
+
+            return Ok(user);
+        }
+
+        [HttpGet("users")]
         public IActionResult GetUsers()
         {
             var users = _context.User
