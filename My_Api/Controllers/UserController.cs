@@ -2,45 +2,68 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using My_Api.Models;
+using My_Api.Services;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
-public class UserOutput
-{
-    public int Id { get; set; }
-    public string FirstName { get; set; }
-    public string Email { get; set; }
-}
 
 namespace My_Api.Controllers
 {
+    [Authorize]
     [ApiController]
-    [Route("user")]
+    [Route("[controller]")]
     public class UserController : Controller
     {
 
         private readonly AlexwilkinsonContext _context;
+        private readonly IConfiguration _configuration;
+        private IUserService _userService;
 
 
-        public UserController(AlexwilkinsonContext context)
+        public UserController(AlexwilkinsonContext context, IConfiguration configuration, IUserService userService)
         {
             _context = context;
+            _configuration = configuration;
+            _userService = userService;
         }
 
         [HttpGet]
-        public IEnumerable<UserOutput> GetUsers()
+        public IActionResult GetUsers()
         {
             var users = _context.User
                 .Where(u => u.IsActive == true)
-                .Select(x => new UserOutput
+                .Select(x => new UserOutputModel
                 {
                     Id = x.Id,
                     FirstName = x.FirstName,
                     Email = x.Email,
                 }).ToList();
 
-            return users;
+            return Ok(users);
+        }
+
+        [AllowAnonymous]
+        [HttpPost("Authenticate")]
+        public IActionResult Authenticate([FromBody] AuthenticateModel model)
+        {
+
+            var user = _userService.Authenticate(model.Email, model.Password);
+
+            if(user == null)
+            {
+                return BadRequest(new
+                {
+                    message = "Username or password incorrect"
+                });
+            }
+
+
+
+            return Ok(user);
         }
 
     }

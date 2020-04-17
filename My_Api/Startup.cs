@@ -12,6 +12,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using My_Api.Services;
 
 namespace My_Api
 {
@@ -30,12 +34,38 @@ namespace My_Api
 
             services.AddCors();
 
+            services.AddSingleton(Configuration);
+
             services.AddDbContextPool<AlexwilkinsonContext>(options => options
             .UseMySql(Configuration.GetConnectionString("DefaultConnection"))
 
             );
 
             services.AddControllers();
+
+            var jwtKey = Encoding.ASCII.GetBytes(Configuration.GetValue<string>("JwtSecret"));
+            services.AddAuthentication(x =>
+            {
+                x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+                .AddJwtBearer(x =>
+                {
+                    x.RequireHttpsMetadata = false;
+                    x.SaveToken = true;
+                    x.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(jwtKey),
+                        ValidateIssuer = false,
+                        ValidateAudience = false
+                    };
+                });
+
+            // allows for DI for services
+            services.AddScoped<IUserService, UserService>();
+
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -50,6 +80,7 @@ namespace My_Api
 
             app.UseRouting();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
