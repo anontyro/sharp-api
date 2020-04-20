@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
@@ -14,6 +15,8 @@ namespace My_Api.Services
     {
         UserOutputModel Authenticate(string email, string password);
         User DecodeTokenUser(string jwtToken);
+        List<User> RemoveSensitiveData(List<User> users);
+        User RemoveSensitiveData(User user);
     }
 
 
@@ -49,25 +52,9 @@ namespace My_Api.Services
                 return null;
             }
 
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration.GetValue<string>("JwtSecret"));
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new Claim[]{
-                    new Claim(ClaimTypes.Name, user.Id.ToString())
-                }),
-                Expires = DateTime.UtcNow.AddDays(1),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            UserOutputModel output = new UserOutputModel
-            {
-                FirstName = user.FirstName,
-                Email = user.Email,
-                IsActive = user.IsActive,
-                Token = tokenHandler.WriteToken(token),
+            var token = CreateNextToken(user);
 
-            };
+            UserOutputModel output = new UserOutputModel(user, token);
 
             return output;
         }
@@ -77,7 +64,7 @@ namespace My_Api.Services
             var tokenHandler = new JwtSecurityTokenHandler();
             var securityToken = tokenHandler.ReadToken(jwtToken) as JwtSecurityToken;
 
-            var userId = securityToken.Claims.FirstOrDefault(claim => claim.Type == "unique_name").Value;
+            var userId = GetSpecificClaim(securityToken);
 
             if(userId == null)
             {
@@ -91,6 +78,47 @@ namespace My_Api.Services
 
             user.Password = null;
             return user;
+        }
+
+        public List<User> RemoveSensitiveData(List<User> users)
+        {
+            users.ForEach(u =>
+            {
+                RemoveSensitiveData(u);
+            });
+
+            return users;
+        }
+
+        public User RemoveSensitiveData(User user)
+        {
+            user.Password = null;
+
+            return user;
+        }
+
+        private string GetSpecificClaim(JwtSecurityToken token, string claimName = "unique_name")
+        {
+            var userClaim = token.Claims.FirstOrDefault(claim => claim.Type == claimName).Value;
+
+            return userClaim;
+        }
+
+        private string CreateNextToken(User user)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(_configuration.GetValue<string>("JwtSecret"));
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new Claim[]{
+                    new Claim(ClaimTypes.Name, user.Id.ToString())
+                }),
+                Expires = DateTime.UtcNow.AddDays(1),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+
+            return tokenHandler.WriteToken(token);
         }
 
     }

@@ -45,14 +45,9 @@ namespace My_Api.Controllers
         {
             var users = _context.User
                 .Where(u => u.IsActive == true)
-                .Select(x => new UserOutputModel
-                {
-                    Id = x.Id,
-                    FirstName = x.FirstName,
-                    Email = x.Email,
-                }).ToList();
+                .ToList();
 
-            return Ok(users);
+            return Ok(_userService.RemoveSensitiveData(users));
         }
 
         [AllowAnonymous]
