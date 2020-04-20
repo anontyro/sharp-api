@@ -70,5 +70,15 @@ namespace My_Api.Controllers
             return Ok(user);
         }
 
+        [AllowAnonymous]
+        [HttpPost("Register")]
+        public IActionResult Register([FromBody]  RegisterModel user)
+        {
+            var addedUser = _userService.Register(user);
+
+
+            return Ok(addedUser);
+        }
+
     }
 }

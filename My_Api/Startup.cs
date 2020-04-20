@@ -16,6 +16,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using My_Api.Services;
+using My_Api.Models;
 
 namespace My_Api
 {
@@ -33,6 +34,9 @@ namespace My_Api
         {
 
             services.AddCors();
+
+            IConfigurationSection email = Configuration.GetSection("DefaultGmailAccount");
+            services.Configure<GmailConfigModel>(email);
 
             services.AddSingleton(Configuration);
 
