@@ -69,7 +69,6 @@ namespace My_Api
             // allows for DI for services
             services.AddScoped<IUserService, UserService>();
 
-
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -1,6 +1,7 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using My_Api.Entities;
 
 namespace My_Api
 {
@@ -16,6 +17,7 @@ namespace My_Api
         public virtual DbSet<MyBlog> MyBlog { get; set; }
         public virtual DbSet<Stock> Stock { get; set; }
         public virtual DbSet<User> User { get; set; }
+        public virtual DbSet<UserToken> UserTokens { get; set; }
 
 
 
@@ -193,6 +195,43 @@ namespace My_Api
                     .HasColumnType("varchar(255)")
                     .HasCharSet("latin1")
                     .HasCollation("latin1_swedish_ci");
+            });
+
+            modelBuilder.Entity<UserToken>(entity =>
+            {
+                entity.ToTable("user_tokens");
+
+                entity.Property(e => e.Id)
+                    .HasColumnName("id")
+                    .HasColumnType("int(11)");
+
+                entity.Property(e => e.TokenValue)
+                    .IsRequired()
+                    .HasColumnName("token_value")
+                    .HasColumnType("text")
+                    .HasCharSet("latin1")
+                    .HasCollation("latin1_swedish_ci");
+
+                entity.Property(e => e.TokenType)
+                    .HasColumnName("token_type")
+                    .HasColumnType("varchar(45)")
+                    .HasCharSet("latin1")
+                    .HasCollation("latin1_swedish_ci");
+
+                entity.Property(e => e.DateCreated)
+                    .HasColumnName("date_created")
+                    .HasColumnType("timestamp");
+
+                entity.Property(e => e.UserId)
+                    .IsRequired()
+                    .HasColumnName("user_id")
+                    .HasColumnType("int(11)");
+
+                entity.Property(e => e.ExpirationTime)
+                    .IsRequired()
+                    .HasColumnName("expiration_time")
+                    .HasColumnType("datetime");
+
             });
 
             OnModelCreatingPartial(modelBuilder);

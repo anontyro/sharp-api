@@ -5,10 +5,12 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using MailKit.Net.Smtp;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MimeKit;
+using My_Api.Entities;
 using My_Api.Models;
 
 namespace My_Api.Services
@@ -30,13 +32,15 @@ namespace My_Api.Services
         private readonly AlexwilkinsonContext _context;
         private readonly IOptions<GmailConfigModel> _emailConfig;
         private readonly IConfiguration _configuration;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
 
-        public UserService(AlexwilkinsonContext context, IConfiguration configuration, IOptions<GmailConfigModel> emailConfig)
+        public UserService(AlexwilkinsonContext context, IConfiguration configuration, IOptions<GmailConfigModel> emailConfig, IHttpContextAccessor httpContextAccessor)
         {
             _context = context;
             _configuration = configuration;
             _emailConfig = emailConfig;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public void SendEmail(EmailMessageModel emailMsg)
@@ -87,16 +91,22 @@ namespace My_Api.Services
                 };
 
                 _context.User.Add(user);
+                _context.SaveChanges();
+
+                var validToken = CreateActivateUserToken(user.Id);
+
+                _context.UserTokens.Add(validToken);
+                _context.SaveChanges();
+
                 string fullName = nextUser.FirstName + " " + nextUser.LastName;
                 var email = new EmailMessageModel
                 {
                     ToEmailAddress = nextUser.Email,
                     ToName = fullName,
                     Subject = "New User Registration for " + fullName,
-                    Body = string.Format("To {0} you have created a new account which is currently inactive please activate account before using", fullName)
+                    Body = string.Format("To {0} you have created a new account which is currently inactive please activate account before using \n Please use {1} to valid your account", fullName, validToken.TokenValue)
                 };
                 SendEmail(email);
-                _context.SaveChanges();
                 return RemoveSensitiveData(user);
             }
             catch (Exception err)
@@ -169,6 +179,19 @@ namespace My_Api.Services
             user.Password = null;
 
             return user;
+        }
+        private UserToken CreateActivateUserToken(int userId)
+        {
+            var now = DateTime.Now;
+            var verifyToken = BCrypt.Net.BCrypt.HashPassword(now.ToString() + userId.ToString(), 12);
+            UserToken token = new UserToken
+            {
+                ExpirationTime = now.AddHours(1),
+                TokenValue = verifyToken,
+                UserId = userId
+            };
+
+            return token;
         }
 
         private string GetSpecificClaim(JwtSecurityToken token, string claimName = "unique_name")
