@@ -66,6 +66,8 @@ namespace My_Api
                     };
                 });
 
+            // allows IHttpContextAccessor to be used in services
+            services.AddHttpContextAccessor();
             // allows for DI for services
             services.AddScoped<IUserService, UserService>();
 

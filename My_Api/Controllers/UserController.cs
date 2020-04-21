@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Web;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -78,6 +79,32 @@ namespace My_Api.Controllers
 
 
             return Ok(addedUser);
+        }
+
+        [AllowAnonymous]
+        [HttpGet("Activate")]
+        public IActionResult Activate([FromQuery] string token)
+        {
+
+            if(token == null)
+            {
+                return BadRequest(new
+                {
+                    Message = "Token is required for validation"
+                });
+            }
+
+            var activatedUser = _userService.Activate(HttpUtility.UrlDecode(token));
+
+            if(activatedUser == null)
+            {
+                return BadRequest(new
+                {
+                    Message = "No user can be found that needs to be activated for this token"
+                });
+            }
+
+            return Ok(activatedUser);
         }
 
     }

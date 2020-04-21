@@ -4,6 +4,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using System.Text;
+using System.Web;
 using MailKit.Net.Smtp;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -23,6 +24,7 @@ namespace My_Api.Services
         List<User> RemoveSensitiveData(List<User> users);
         User RemoveSensitiveData(User user);
         User Register(RegisterModel nextUser);
+        User Activate(string token);
         void SendEmail(EmailMessageModel emailMsg);
     }
 
@@ -99,12 +101,18 @@ namespace My_Api.Services
                 _context.SaveChanges();
 
                 string fullName = nextUser.FirstName + " " + nextUser.LastName;
+                var activateUri = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}/user/activate?token={HttpUtility.UrlEncode(validToken.TokenValue)}";
                 var email = new EmailMessageModel
                 {
                     ToEmailAddress = nextUser.Email,
                     ToName = fullName,
                     Subject = "New User Registration for " + fullName,
-                    Body = string.Format("To {0} you have created a new account which is currently inactive please activate account before using \n Please use {1} to valid your account", fullName, validToken.TokenValue)
+                    Body = string.Format(
+                        "To {0}, \n" +
+                        "You have created a new account which is currently inactive please activate account before using \n " +
+                        "Click the following link to valid your account: \n" +
+                        "{1}"
+                        , fullName, activateUri)
                 };
                 SendEmail(email);
                 return RemoveSensitiveData(user);
@@ -114,6 +122,42 @@ namespace My_Api.Services
                 Console.WriteLine(err.GetType());
                 return null;
             }
+        }
+
+        public User Activate(string token)
+        {
+            var now = DateTime.Now;
+            var userToken = _context.UserTokens
+                    .Where(t => t.TokenValue == token)
+                    .SingleOrDefault();
+
+            if(userToken == null || now > userToken.ExpirationTime)
+            {
+                return null;
+            }
+
+            var user = _context.User
+                .Where(u => u.Id == userToken.UserId)
+                .SingleOrDefault();
+
+            if(user == null)
+            {
+                return null;
+            }
+
+            if (user.IsActive)
+            {
+                return user;
+            }
+
+            _context.Update(user);
+            user.IsActive = true;
+            _context.Remove(userToken);
+
+            _context.SaveChanges();
+
+            return RemoveSensitiveData(user);
+
         }
 
         public UserOutputModel Authenticate(string email, string password)
