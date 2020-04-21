@@ -77,7 +77,6 @@ namespace My_Api.Controllers
         {
             var addedUser = _userService.Register(user);
 
-
             return Ok(addedUser);
         }
 
@@ -107,5 +106,49 @@ namespace My_Api.Controllers
             return Ok(activatedUser);
         }
 
+        [AllowAnonymous]
+        [HttpPost("Recover")]
+        public IActionResult RecoverPasswordToken([FromBody] RecoverPasswordModel recoverPassword)
+        {
+
+            var token = _userService.RecoverPasswordToken(recoverPassword);
+
+            if (!token)
+            {
+                return BadRequest(new
+                {
+                    Message = "Unable to obtain a user reset token"
+                });
+            }
+
+            return Ok(new {
+                Message  = "Please check you inbox for the reset token",
+                URI = "user/recover/password",
+                HttpType = "PUT",
+                Body = new PasswordResetModel
+                {
+                    Token = "xxxx",
+                    Password = "new password",
+                    Email = recoverPassword.Email,
+                }
+            });
+        }
+
+        [AllowAnonymous]
+        [HttpPut("Recover/Password")]
+        public IActionResult ResetPassword([FromBody] PasswordResetModel passwordReset)
+        {
+            var user = _userService.ResetPassword(passwordReset);
+
+            if(user == null)
+            {
+                return BadRequest(new
+                {
+                    Message = "Unable to reset user password please try and make the request again"
+                });
+            }
+
+            return Ok(user);
+        }
     }
 }

@@ -25,6 +25,8 @@ namespace My_Api.Services
         User RemoveSensitiveData(User user);
         User Register(RegisterModel nextUser);
         User Activate(string token);
+        User ResetPassword(PasswordResetModel passwordReset);
+        bool RecoverPasswordToken(RecoverPasswordModel recoverPassword);
         void SendEmail(EmailMessageModel emailMsg);
     }
 
@@ -35,6 +37,7 @@ namespace My_Api.Services
         private readonly IOptions<GmailConfigModel> _emailConfig;
         private readonly IConfiguration _configuration;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly string _passwordTokenType = "password-reset-otp";
 
 
         public UserService(AlexwilkinsonContext context, IConfiguration configuration, IOptions<GmailConfigModel> emailConfig, IHttpContextAccessor httpContextAccessor)
@@ -78,6 +81,48 @@ namespace My_Api.Services
 
         }
 
+        public bool RecoverPasswordToken(RecoverPasswordModel recoverPassword)
+        {
+            var user = _context.User
+                .Where(u => u.Email == recoverPassword.Email)
+                .Where(u => u.IsActive == true)
+                .SingleOrDefault();
+
+            if (user == null)
+            {
+                return false;
+            }
+
+            var passwordToken = CreateUserToken(user.Id, _passwordTokenType);
+
+
+            _context.UserTokens.Add(passwordToken);
+            _context.SaveChanges();
+
+            string fullName = user.FirstName + " " + user.LastName;
+
+            var emailMsg = new EmailMessageModel
+            {
+                ToEmailAddress = user.Email,
+                ToName = fullName,
+                Subject = "Password recovery",
+                Body = string.Format(
+                    "To {0}, \n" +
+                    "You have requested a password recovery token, please find token attached" +
+                    "You must use at the following link: \n" +
+                    "PUT user/recover/password \n" +
+                    "Body = Token, Password, Email \n" +
+                    "Token: {1}"
+                    , fullName, passwordToken.TokenValue)
+            };
+
+            SendEmail(emailMsg);
+
+            return true;
+
+        }
+
+
         public User Register(RegisterModel nextUser)
         {
             try
@@ -95,7 +140,7 @@ namespace My_Api.Services
                 _context.User.Add(user);
                 _context.SaveChanges();
 
-                var validToken = CreateActivateUserToken(user.Id);
+                var validToken = CreateUserToken(user.Id);
 
                 _context.UserTokens.Add(validToken);
                 _context.SaveChanges();
@@ -160,6 +205,46 @@ namespace My_Api.Services
 
         }
 
+        public User ResetPassword(PasswordResetModel passwordReset)
+        {
+            var now = DateTime.Now;
+            var user = _context.User
+                .Where(u => u.Email == passwordReset.Email)
+                .Where(u => u.IsActive == true)
+                .SingleOrDefault();
+
+            if(user == null)
+            {
+                return null;
+            }
+
+            var userToken = _context.UserTokens
+                .Where(t => t.TokenValue == passwordReset.Token)
+                .Where(t => t.TokenType == _passwordTokenType)
+                .OrderByDescending(t => t.DateCreated)
+                .FirstOrDefault();
+
+            if(userToken == null)
+            {
+                return null;
+            }
+
+            if(userToken.UserId != user.Id || now > userToken.ExpirationTime)
+            {
+                return null;
+            }
+
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(passwordReset.Password, 12);
+
+            _context.Update(user);
+            user.Password = hashedPassword;
+            _context.Remove(userToken);
+            _context.SaveChanges();
+
+            return RemoveSensitiveData(user);
+
+        }
+
         public UserOutputModel Authenticate(string email, string password)
         {
             var user = _context.User
@@ -180,7 +265,7 @@ namespace My_Api.Services
                 return null;
             }
 
-            var token = CreateNextToken(user);
+            var token = CreateJwtToken(user);
 
             UserOutputModel output = new UserOutputModel(user, token);
 
@@ -224,7 +309,8 @@ namespace My_Api.Services
 
             return user;
         }
-        private UserToken CreateActivateUserToken(int userId)
+
+        private UserToken CreateUserToken(int userId, string tokenType = "activate-otp")
         {
             var now = DateTime.Now;
             var verifyToken = BCrypt.Net.BCrypt.HashPassword(now.ToString() + userId.ToString(), 12);
@@ -232,7 +318,8 @@ namespace My_Api.Services
             {
                 ExpirationTime = now.AddHours(1),
                 TokenValue = verifyToken,
-                UserId = userId
+                UserId = userId,
+                TokenType = tokenType,
             };
 
             return token;
@@ -245,7 +332,7 @@ namespace My_Api.Services
             return userClaim;
         }
 
-        private string CreateNextToken(User user)
+        private string CreateJwtToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(_configuration.GetValue<string>("JwtSecret"));
