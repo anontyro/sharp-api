@@ -1,17 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
-using System.Security.Claims;
-using System.Text;
 using System.Web;
-using MailKit.Net.Smtp;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
-using MimeKit;
-using My_Api.Entities;
 using My_Api.Models;
 
 namespace My_Api.Services
@@ -20,65 +12,32 @@ namespace My_Api.Services
     public interface IUserService
     {
         UserOutputModel Authenticate(string email, string password);
-        User DecodeTokenUser(string jwtToken);
         List<User> RemoveSensitiveData(List<User> users);
         User RemoveSensitiveData(User user);
         User Register(RegisterModel nextUser);
         User Activate(string token);
         User ResetPassword(PasswordResetModel passwordReset);
         bool RecoverPasswordToken(RecoverPasswordModel recoverPassword);
-        void SendEmail(EmailMessageModel emailMsg);
     }
 
 
     public class UserService: IUserService
     {
         private readonly AlexwilkinsonContext _context;
-        private readonly IOptions<GmailConfigModel> _emailConfig;
         private readonly IConfiguration _configuration;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IMailService _mailService;
+        private readonly ITokenService _tokenService;
         private readonly string _passwordTokenType = "password-reset-otp";
 
 
-        public UserService(AlexwilkinsonContext context, IConfiguration configuration, IOptions<GmailConfigModel> emailConfig, IHttpContextAccessor httpContextAccessor)
+        public UserService(AlexwilkinsonContext context, IConfiguration configuration, IMailService mailService, IHttpContextAccessor httpContextAccessor, ITokenService tokenService)
         {
             _context = context;
             _configuration = configuration;
-            _emailConfig = emailConfig;
             _httpContextAccessor = httpContextAccessor;
-        }
-
-        public void SendEmail(EmailMessageModel emailMsg)
-        {
-            var message = new MimeMessage();
-            string emailName = _emailConfig.Value.Name;
-            string emailUserName = _emailConfig.Value.UserName;
-            string emailPassword = _emailConfig.Value.Password;
-
-            message.From.Add(new MailboxAddress(emailName, emailUserName));
-            message.To.Add(new MailboxAddress(emailMsg.ToName, emailMsg.ToEmailAddress));
-            message.Subject = emailMsg.Subject;
-            message.Body = new TextPart("plain")
-            {
-                Text = emailMsg.Body
-            };
-
-            try
-            {
-                using var client = new SmtpClient();
-                client.Connect("smtp.gmail.com", 587);
-
-                client.AuthenticationMechanisms.Remove("XOAUTH2");
-                client.Authenticate(emailUserName, emailPassword);
-
-                client.Send(message);
-                client.Disconnect(true);
-            } catch(Exception err)
-            {
-                Console.Write(err.Message, err.GetType());
-            }
-
-
+            _mailService = mailService;
+            _tokenService = tokenService;
         }
 
         public bool RecoverPasswordToken(RecoverPasswordModel recoverPassword)
@@ -93,7 +52,7 @@ namespace My_Api.Services
                 return false;
             }
 
-            var passwordToken = CreateUserToken(user.Id, _passwordTokenType);
+            var passwordToken = _tokenService.CreateUserToken(user.Id, _passwordTokenType);
 
 
             _context.UserTokens.Add(passwordToken);
@@ -116,12 +75,11 @@ namespace My_Api.Services
                     , fullName, passwordToken.TokenValue)
             };
 
-            SendEmail(emailMsg);
+            _mailService.SendEmail(emailMsg);
 
             return true;
 
         }
-
 
         public User Register(RegisterModel nextUser)
         {
@@ -140,7 +98,7 @@ namespace My_Api.Services
                 _context.User.Add(user);
                 _context.SaveChanges();
 
-                var validToken = CreateUserToken(user.Id);
+                var validToken =_tokenService.CreateUserToken(user.Id);
 
                 _context.UserTokens.Add(validToken);
                 _context.SaveChanges();
@@ -159,7 +117,7 @@ namespace My_Api.Services
                         "{1}"
                         , fullName, activateUri)
                 };
-                SendEmail(email);
+                _mailService.SendEmail(email);
                 return RemoveSensitiveData(user);
             }
             catch (Exception err)
@@ -265,32 +223,11 @@ namespace My_Api.Services
                 return null;
             }
 
-            var token = CreateJwtToken(user);
+            var token = _tokenService.CreateJwtToken(user);
 
             UserOutputModel output = new UserOutputModel(user, token);
 
             return output;
-        }
-
-        public User DecodeTokenUser(string jwtToken)
-        {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var securityToken = tokenHandler.ReadToken(jwtToken) as JwtSecurityToken;
-
-            var userId = GetSpecificClaim(securityToken);
-
-            if(userId == null)
-            {
-                return null;
-            }
-
-            var user = _context.User
-                .Where(x => x.Id == int.Parse(userId))
-                .SingleOrDefault();
-
-
-            user.Password = null;
-            return user;
         }
 
         public List<User> RemoveSensitiveData(List<User> users)
@@ -310,44 +247,7 @@ namespace My_Api.Services
             return user;
         }
 
-        private UserToken CreateUserToken(int userId, string tokenType = "activate-otp")
-        {
-            var now = DateTime.Now;
-            var verifyToken = BCrypt.Net.BCrypt.HashPassword(now.ToString() + userId.ToString(), 12);
-            UserToken token = new UserToken
-            {
-                ExpirationTime = now.AddHours(1),
-                TokenValue = verifyToken,
-                UserId = userId,
-                TokenType = tokenType,
-            };
 
-            return token;
-        }
-
-        private string GetSpecificClaim(JwtSecurityToken token, string claimName = "unique_name")
-        {
-            var userClaim = token.Claims.FirstOrDefault(claim => claim.Type == claimName).Value;
-
-            return userClaim;
-        }
-
-        private string CreateJwtToken(User user)
-        {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration.GetValue<string>("JwtSecret"));
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new Claim[]{
-                    new Claim(ClaimTypes.Name, user.Id.ToString())
-                }),
-                Expires = DateTime.UtcNow.AddDays(1),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-
-            return tokenHandler.WriteToken(token);
-        }
 
     }
 }

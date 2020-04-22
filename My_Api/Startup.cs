@@ -1,16 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -34,6 +27,9 @@ namespace My_Api
         {
 
             services.AddCors();
+
+            services.AddControllersWithViews();
+            services.AddRazorPages();
 
             IConfigurationSection email = Configuration.GetSection("DefaultGmailAccount");
             services.Configure<GmailConfigModel>(email);
@@ -70,6 +66,8 @@ namespace My_Api
             services.AddHttpContextAccessor();
             // allows for DI for services
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<IMailService, MailService>();
+            services.AddScoped<ITokenService, TokenService>();
 
         }
 
@@ -84,6 +82,8 @@ namespace My_Api
             app.UseHttpsRedirection();
 
             app.UseRouting();
+
+            app.UseStaticFiles();
 
             app.UseAuthentication();
             app.UseAuthorization();

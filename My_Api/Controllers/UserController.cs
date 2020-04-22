@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Linq;
 using System.Web;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using My_Api.Models;
 using My_Api.Services;
 
@@ -17,31 +13,31 @@ namespace My_Api.Controllers
     [Authorize]
     [ApiController]
     [Route("[controller]")]
-    public class UserController : Controller
+    public class UserController : ControllerBase
     {
 
         private readonly AlexwilkinsonContext _context;
-        private readonly IConfiguration _configuration;
         private IUserService _userService;
+        private ITokenService _tokenService;
 
 
-        public UserController(AlexwilkinsonContext context, IConfiguration configuration, IUserService userService)
+        public UserController(AlexwilkinsonContext context, IUserService userService, ITokenService tokenService)
         {
             _context = context;
-            _configuration = configuration;
             _userService = userService;
+            _tokenService = tokenService;
         }
         [HttpGet]
         public IActionResult GetUserDetails([FromHeader] string authorization)
         {
             var jwtToken = authorization.Split(" ")[1];
 
-            var user = _userService.DecodeTokenUser(jwtToken);
+            var user = _tokenService.DecodeJwtToken(jwtToken);
 
             return Ok(user);
         }
 
-        [HttpGet("users")]
+        [HttpGet("Users")]
         public IActionResult GetUsers()
         {
             var users = _context.User
