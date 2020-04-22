@@ -1,0 +1,38 @@
+﻿
+@{
+
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="css/styles.css" rel="stylesheet" />
+
+    <title>Alex Auth</title>
+</head>
+<body>
+    <div class="content">
+
+        <h2 class="neon-header">Alex Wilkinson Auth</h2>
+        <div class="neon-container">
+            Complete Auth service for <a href="alexwilknson.co" target="_blank">alexwilkinson.co</a> this service deals
+            with all the authentication requirements for user services. This is written in .Net Core 3.1.
+            <br />
+            <ul>
+                <li><span class="http-verb-span">GET</span> <a href="/user">UserDetail endpoint</a> - <span>Requires an authorization header with bearer, token will return user details</span></li>
+                <li><span class="http-verb-span">GET</span> <a href="/user/activate">Active endpoint</a> - <span>Requires query string with token param using user activation token, will return activated user</span></li>
+                <li><span class="http-verb-span">POST</span> <a href="/user/register">Register endpoint</a> - <span>Requires a JSON body with email, firstName, and lastName, will create a new user that must activate via email link</span></li>
+                <li><span class="http-verb-span">POST</span> <a href="/user/authenticate">Authenticate endpoint</a> - <span>Requires a JSON body with email and password, will return user auth token</span></li>
+                <li><span class="http-verb-span">POST</span> <a href="/user/recover">Recover endpoint</a> - <span>Requires a JSON body with email, return email set to user with a speciifc token to use in password reset</span></li>
+                <li><span class="http-verb-span">PUT</span> <a href="/user/recover/password">Reset Password endpoint</a> - <span>Requires a JSON body with email, token, and password, using the recover token and a new password will reset password</span></li>
+
+            </ul>
+        </div>
+    </div>
+    <div class="footer">
+        footer
+    </div>
+</body>
+</html>

@@ -1,0 +1,94 @@
+﻿@import url(//fonts.googleapis.com/css?family=Pacifico);
+@import url(//fonts.googleapis.com/css?family=Exo+2);
+
+* {
+    box-sizing: border-box;
+    color: #B80E65;
+    font-family: 'Exo 2';
+    font-size: 1.03em;
+}
+a {
+    text-decoration: none;
+    color: #B80E65;
+}
+
+a:hover {
+    color: #1791B1;
+}
+
+body {
+    background-color: #1c1B4D;
+    margin: 0;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: #1c1B4D;
+}
+
+
+
+.content {
+    flex: 1 0 auto;
+}
+
+.footer {
+    flex-shrink: 0;
+}
+
+.http-verb-span {
+    color: #1791B1;
+}
+
+.neon-header {
+    text-align: center;
+    width: 65%;
+    margin: 0 auto;
+    user-select: none;
+    font: 200 3vh 'Pacifico';
+    color: #fbc3dfd6;
+    text-shadow: 0 -40px 100px, 0 0 2px, 0 0 1em #ff4444, 0 0 0.5em #ff4444, 0 0 0.1em #ff4444, 0 10px 3px #000;
+}
+
+.neon-container {
+    width: 100%;
+    margin: auto;
+    padding: 25px;
+    background-color: rgba(0, 0, 0, 0.51);
+    min-height: 200px;
+    border: 0.4rem solid #fff;
+    border-radius: 2rem;
+    box-shadow: 0 0 0.5rem #fff, inset 0 0 0.5rem #fff, 0 0 4rem #1791B1, inset 0 0 1rem #1791B1, 0 0 4rem #1791B1, inset 0 0 3rem #1791B1;
+}
+
+    .neon-container > ul {
+        list-style-type: none;
+        padding: 0;
+    }
+
+.neon-container > ul > li {
+    margin-bottom: 10px;
+
+}
+
+
+@media only screen and (min-width: 600px) {
+    .neon-header {
+        font-size: 6vh;
+    }
+    .neon-container{
+        width: 75%;
+    }
+        .neon-container > ul {
+            list-style-type: none;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+}

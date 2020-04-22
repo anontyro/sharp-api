@@ -30,5 +30,9 @@
     <Folder Include="Entities\" />
     <Folder Include="Models\" />
     <Folder Include="Services\" />
+    <Folder Include="Views\" />
+    <Folder Include="Views\Home\" />
+    <Folder Include="wwwroot\" />
+    <Folder Include="wwwroot\css\" />
   </ItemGroup>
 </Project>
