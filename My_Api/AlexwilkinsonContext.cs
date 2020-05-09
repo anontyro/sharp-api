@@ -189,6 +189,10 @@ namespace My_Api
                     .HasCharSet("latin1")
                     .HasCollation("latin1_swedish_ci");
 
+                entity.Property(e => e.AccessLevel)
+                    .HasColumnName("accessLevel")
+                    .HasColumnType("int(11)");
+
                 entity.Property(e => e.Password)
                     .IsRequired()
                     .HasColumnName("password")

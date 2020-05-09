@@ -208,6 +208,7 @@ namespace My_Api.Services
             var user = _context.User
                 .Where(u => u.IsActive == true)
                 .Where(u => u.Email == email)
+                .Where(u => u.AccessLevel > 0)
                 .SingleOrDefault();
 
             if(user == null)

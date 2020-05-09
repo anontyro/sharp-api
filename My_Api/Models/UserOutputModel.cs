@@ -15,6 +15,7 @@ namespace My_Api.Models
             Password = null;
             IsActive = user.IsActive;
             Token = token;
+            AccessLevel = user.AccessLevel;
         }
         public UserOutputModel()
         {
